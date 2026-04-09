@@ -80,6 +80,29 @@ export default function move(gameState){
         }
     }
 
+    // Avoid head-ons
+    let directions = {up:{x:0,y:1}, down:{x:0,y:-1}, left:{x:-1,y:0}, right:{x:1,y:0}} ;
+    let myLength = gameState.you.body.length;
+    for (let enemy of allSnakes) {
+        if (enemy.id == gameState.you.id || enemy.length < myLength) {
+            continue;
+        }
+        let enemyHead = enemy.body[0];
+        for (let direct of Object.values(directions)) {
+           const dangerX = enemyHead.x + direct.x;
+           const dangerY = enemyHead.y + direct.y;
+           for (const [dir, d] of Object.entries(directions)) {
+               if (myHead.x + d.x == dangerX && myHead.y + d.y == dangerY) {
+                   moveSafety[dir] = false;
+               }
+           }
+       }
+   }
+
+
+    
+
+
     // Are there any safe moves left?
     
     //Object.keys(moveSafety) returns ["up", "down", "left", "right"]
