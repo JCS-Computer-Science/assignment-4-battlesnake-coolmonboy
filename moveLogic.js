@@ -1,208 +1,166 @@
-   function floodFill(gameState, startX, startY) {
-    let board = gameState.board;
-    let width = board.width;
-    let height = board.height;
+export default function move(gameState) {
+let moveSafety = {
+    up: true,
+    down: true,
+    left: true,
+    right: true
+};
 
-    let blocked = new Set();
-    for (let snake of board.snakes) {
-        for (let segment of snake.body) {
-            blocked.add(`${segment.x},${segment.y}`);
+let board = gameState.board;
+let boardArray = [];
+
+function createBoardArray() {
+    for (let x = 0; x < board.width; x++) {
+        for (let y = 0; y < board.height; y++){
+            boardArray.push({x:x, y:y, weight:1})
         }
     }
+}
 
-    let visited = new Set();
-    let queue = [[startX, startY]];
-    visited.add(`${startX},${startY}`);
+function borderWeight() {
+    for (let part of boardArray) {
+        if (part.x == 0 || part.x == board.width - 1 || part.y == 0 || part.y == board.height - 1) {
+            part.weight += -.25;
+        }
+    }
+}
 
-    while (queue.length > 0) {
-        let [x, y] = queue.shift();
-        let neighbors = [
-            [x, y + 1],
-            [x, y - 1],
-            [x - 1, y],
-            [x + 1, y],
-        ];
-
-        for (let [nx, ny] of neighbors) {
-            let key = `${nx},${ny}`;
-            if (
-                nx >= 0 && nx <= width &&
-                ny >= 0 && ny <= height &&
-                !blocked.has(key) &&
-                !visited.has(key)
-            ) {
-                visited.add(key);
-                queue.push([nx, ny]);
+function snakeWeight() {
+let allSnakes = gameState.board.snakes;
+    for (let snake of allSnakes) {
+        let body = snake.body;
+        for (let i = 0; i < body.length; i++) {
+            let part = body[i];
+            let isTail = i === body.length - 1;  
+            for (let cell of boardArray) {
+                if (cell.x === part.x && cell.y === part.y) {
+                    if (!isTail) cell.weight = -Infinity;  
+                } else if (cell.x == part.x + 1 && cell.y == part.y || 
+                cell.x == part.x - 1 && cell.y == part.y ||
+                cell.x == part.x && cell.y == part.y + 1 ||
+                cell.x == part.x && cell.y == part.y - 1
+                ){
+                    cell.weight -= 0.25;
+                } 
             }
         }
+    }
+}
+
+function foodWeight() {
+    let foods = gameState.board.food;
+    let health = gameState.you.health;
+    for (let bit of foods) {
+        for (let cell of boardArray) {
+            if (cell.x == bit.x && cell.y == bit.y) {
+                if (health <= 50) {
+                    cell.weight += 1.5;
+                } else {
+                    cell.weight -= 1.5;
+                }
+            }
+        }
+    }
+}
+
+function enemyWeight() {
+    let allSnakes = gameState.board.snakes;
+    let myLength = gameState.you.length;
+    for (let snake of allSnakes) {
+        if (snake.id == gameState.you.id) continue;
+        let enemyHead = snake.body[0];
+        let enemyLength = snake.length;
+        for (let cell of boardArray) {
+            let dist = Math.abs(cell.x - enemyHead.x) + Math.abs(cell.y - enemyHead.y);
+            if (dist == 1) {
+                if (myLength > enemyLength + 1) {
+                    cell.weight += 2;
+                } else {
+                    cell.weight -= 2.5;
+                }
+            }
+        }
+    }
+}
+
+function floodFill(startX, startY) {
+    let visited = new Set();
+    let queue = [{x: startX, y: startY}];
+
+    while (queue.length > 0) {
+        let {x, y} = queue.shift();
+        let key = `${x},${y}`;
+        if (visited.has(key)) continue;
+
+        let cell = boardArray.find(c => c.x === x && c.y === y);
+        if (!cell || cell.weight == -Infinity) continue;
+
+        visited.add(key);
+        let neighbors = [
+    {x: x + 1, y}, {x: x - 1, y},
+    {x, y: y + 1}, {x, y: y - 1}
+];
+for (let n of neighbors) {
+    let nKey = `${n.x},${n.y}`;
+    if (!visited.has(nKey)) {
+        queue.push(n);
+    }
+}
     }
     return visited.size;
 }
 
-export default function move(gameState){
-    let moveSafety = {
-        up: true,
-        down: true,
-        left: true,
-        right: true
-    };
-   
-    // We've included code to prevent your Battlesnake from moving backwards
-    let myHead = gameState.you.body[0];
-    let myNeck = gameState.you.body[1];
-   
-    if (myNeck.x < myHead.x) {        // Neck is left of head, don't move left
-        moveSafety.left = false;
-       
-    } else if (myNeck.x > myHead.x) { // Neck is right of head, don't move right
-        moveSafety.right = false;
-       
-    } else if (myNeck.y < myHead.y) { // Neck is below head, don't move down
-        moveSafety.down = false;
-       
-    } else if (myNeck.y > myHead.y) { // Neck is above head, don't move up
-        moveSafety.up = false;
-    }
-   
-    // TODO: Step 1 - Prevent your Battlesnake from moving out of bounds
-    // gameState.board contains an object representing the game board including its width and height
-    // https://docs.battlesnake.com/api/objects/board
-    let gameBoard = gameState.board;
-    if(myHead.x == gameBoard.width - 1) {
-        moveSafety.right = false;
-    }
-    if(myHead.x == 0) {
-        moveSafety.left = false;
-    }
-    if(myHead.y == gameBoard.height - 1) {
-        moveSafety.up = false;
-    }
-    if(myHead.y == 0) {
-        moveSafety.down = false;
-    }
-    // TODO: Step 2 - Prevent your Battlesnake from colliding with itself
-    // gameState.you contains an object representing your snake, including its coordinates
-    // https://docs.battlesnake.com/api/objects/battlesnake
-    let mySnake = gameState.you.body;
-    for (let i = 1; i < mySnake.length; i++) {
-        if (myHead.x == mySnake[i].x - 1 && myHead.y == mySnake[i].y) {
-            moveSafety.right = false;
-        }
-        if (myHead.x == mySnake[i].x + 1 && myHead.y == mySnake[i].y) {
-            moveSafety.left = false;
-        }
-        if (myHead.y == mySnake[i].y - 1 && myHead.x == mySnake[i].x) {
-            moveSafety.up = false;
-        }
-        if (myHead.y == mySnake[i].y + 1 && myHead.x == mySnake[i].x) {
-            moveSafety.down = false;
-        }
-    }
-   
-    // TODO: Step 3 - Prevent your Battlesnake from colliding with other Battlesnakes
-    // gameState.board.snakes contains an array of enemy snake objects, which includes their coordinates
-    // https://docs.battlesnake.com/api/objects/battlesnake
-    let allSnakes = gameState.board.snakes;
-    for (let j = 0; j < allSnakes.length; j++) {
-        let snake = allSnakes[j].body;
-        for (let i = 1; i < snake.length; i++) {
-            if (myHead.x == snake[i].x - 1 && myHead.y == snake[i].y) {
-            moveSafety.right = false;
-        }
-            if (myHead.x == snake[i].x + 1 && myHead.y == snake[i].y) {
-            moveSafety.left = false;
-        }
-            if (myHead.y == snake[i].y - 1 && myHead.x == snake[i].x) {
-            moveSafety.up = false;
-        }
-            if (myHead.y == snake[i].y + 1 && myHead.x == snake[i].x) {
-            moveSafety.down = false;
-        }
-        }
-    }
+function chooseMove() {
+ 
+let myHead = gameState.you.body[0];
 
-    // Avoid head-ons
-    let directions = {up:{x:0,y:1}, down:{x:0,y:-1}, left:{x:-1,y:0}, right:{x:1,y:0}} ;
-    let myLength = gameState.you.body.length;
-    for (let enemy of allSnakes) {
-        if (enemy.id == gameState.you.id || enemy.length < myLength) {
-            continue;
-        }
-        let enemyHead = enemy.body[0];
-        for (let direct of Object.values(directions)) {
-           let dangerX = enemyHead.x + direct.x;
-           let dangerY = enemyHead.y + direct.y;
-           for (let [dir, d] of Object.entries(directions)) {
-               if (myHead.x + d.x == dangerX && myHead.y + d.y == dangerY) {
-                   moveSafety[dir] = false;
-               }
-           }
-       }
-   }
+let candidates = [
+    {dir: "right", square: boardArray.find(c => c.x === myHead.x + 1 && c.y === myHead.y) ?? {weight: -Infinity}},
+    {dir: "left", square: boardArray.find(c => c.x === myHead.x - 1 && c.y === myHead.y) ?? {weight: -Infinity}},
+    {dir: "up", square: boardArray.find(c => c.x === myHead.x && c.y === myHead.y + 1) ?? {weight: -Infinity}},
+    {dir: "down", square: boardArray.find(c => c.x === myHead.x && c.y === myHead.y - 1) ?? {weight: -Infinity}},
+];
 
-    // Are there any safe moves left?
-   
-    let safeMoves = Object.keys(moveSafety).filter(direction => moveSafety[direction]);
-    if (safeMoves.length == 0) {
-        console.log(`MOVE ${gameState.turn}: No safe moves detected! Moving down`);
-        return { move: "down" };
+let myNeck = gameState.you.body[1];
+if (myNeck.x < myHead.x) moveSafety.left = false;
+if (myNeck.x > myHead.x) moveSafety.right = false;
+if (myNeck.y < myHead.y) moveSafety.down = false;
+if (myNeck.y > myHead.y) moveSafety.up = false;
+
+candidates = candidates.filter(c => moveSafety[c.dir]);
+let myLength = gameState.you.length;
+
+let maxFill = 1;
+for (let c of candidates) {
+    if (c.square.weight > -Infinity) {
+        c.fill = floodFill(c.square.x, c.square.y);
+        maxFill = Math.max(maxFill, c.fill);
+    } else {
+        c.fill = 0;
     }
-   
-    let nextMove = safeMoves[Math.floor(Math.random() * safeMoves.length)];
-    let moveScores = [];
-
-    for (let move of safeMoves) {
-        let newX = myHead.x;
-        let newY = myHead.y;
-
-        if (move == "up")    newY += 1;
-        if (move == "down")  newY -= 1;
-        if (move == "left")  newX -= 1;
-        if (move == "right") newX += 1;
-
-        let space = floodFill(gameState, newX, newY);
-
-        moveScores.push({ move, space });
-    }
-
-moveScores.sort((a, b) => b.space - a.space);
-
-let bestSpace = moveScores[0].space;
-
-safeMoves = moveScores.filter(m => m.space >= bestSpace * 0.8).map(m => m.move);
-   
-    // TODO: Step 4 - Move towards food instead of random, to regain health and survive longer
-    // gameState.board.food contains an array of food coordinates https://docs.battlesnake.com/api/objects/board
-    let food = gameState.board.food;
-    if (food.length > 0 && gameState.you.health <= 50) {
-        let closestFood;
-        let closestDist = Infinity;
-        for (let bit of food) {
-            let dist = Math.abs(bit.x - myHead.x) + Math.abs(bit.y - myHead.y);
-            if (dist < closestDist) {
-                closestDist = dist;
-                closestFood = bit;
-            }
-        }
-        let bestMove = nextMove;
-        let bestDist = Infinity;
-        for (let move of safeMoves) {
-            let newX = myHead.x;
-            let newY = myHead.y;
-            if (move == "up")    newY += 1;
-            if (move == "down")  newY -= 1;
-            if (move == "left")  newX -= 1;
-            if (move == "right") newX += 1;
-
-            let dist = Math.abs(closestFood.x - newX) + Math.abs(closestFood.y - newY);
-           
-            if (dist < bestDist) {
-                bestDist = dist;
-                bestMove = move;
-            }
-        }
-        nextMove = bestMove;
-    }
-    console.log(`MOVE ${gameState.turn}: ${nextMove}`)
-    return { move: nextMove };
 }
+
+for (let c of candidates) {
+    if (c.fill > 0 && c.fill < myLength) {
+        c.square.weight = -Infinity;
+        c.fill = 0;
+    }
+    c.totalWeight = c.square.weight + (c.fill / maxFill) * 2;
+}
+
+candidates.sort((a, b) => b.totalWeight - a.totalWeight);
+
+console.log("Turn: " + gameState.turn);
+console.log(candidates);
+return {move: candidates[0].dir};
+
+
+}
+createBoardArray();
+borderWeight();
+snakeWeight();
+foodWeight();
+enemyWeight();
+return chooseMove();
+}
+
