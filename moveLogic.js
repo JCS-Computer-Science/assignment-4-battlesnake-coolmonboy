@@ -50,10 +50,16 @@ export default function move(gameState) {
     function foodWeight() {
         let foods = gameState.board.food;
         let health = gameState.you.health;
+        let myLength = gameState.you.length;
+
+        let isLongest = gameState.board.snakes.every(snake =>
+            snake.id == gameState.you.id || myLength > snake.length
+        );
+
         for (let bit of foods) {
             for (let cell of boardArray) {
                 if (cell.x == bit.x && cell.y == bit.y) {
-                    if (health <= 75) {
+                    if (health <= 50 || !isLongest) {
                         cell.weight *= 2;
                     } else {
                         cell.weight *= 0.75;
@@ -76,7 +82,7 @@ export default function move(gameState) {
                     if (myLength >= enemyLength + 1) {
                         cell.weight *= 1.5;
                     } else {
-                        cell.weight *= 0.5;
+                        cell.weight *= 0.25;
                     }
                 }
             }
