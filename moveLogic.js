@@ -35,7 +35,9 @@ export default function move(gameState) {
                 for (let cell of boardArray) {
                     if (cell.x == part.x && cell.y == part.y) {
                         if (!isTail) cell.weight = -Infinity;  
-                    } else if (cell.x == part.x + 1 && cell.y == part.y || 
+                    } else if (snake.id == gameState.you.id) continue;
+                    
+                    if (cell.x == part.x + 1 && cell.y == part.y || 
                     cell.x == part.x - 1 && cell.y == part.y ||
                     cell.x == part.x && cell.y == part.y + 1 ||
                     cell.x == part.x && cell.y == part.y - 1
@@ -120,6 +122,8 @@ export default function move(gameState) {
         return area;
     }
 
+ 
+
     function chooseMove() {
         let myHead = gameState.you.body[0];
         let myNeck = gameState.you.body[1];
@@ -163,13 +167,18 @@ export default function move(gameState) {
         for (let c of candidates) {
             let spaceScore = (c.fill / maxFill) * 2;
             let trapScore = (c.trapReduction / maxTrapReduction) * 1.5;
-            c.totalWeight = c.square.weight + spaceScore + trapScore;
+            c.totalWeight = c.square.weight + spaceScore;
         }
 
         candidates.sort((a, b) => b.totalWeight - a.totalWeight);
+        
 
-        console.log("Turn: " + gameState.turn);
-        console.log(candidates);
+        if (candidates[0].totalWeight === -Infinity) {
+            candidates.sort((a, b) => b.fill - a.fill);
+        }
+
+
+        
         return {move: candidates[0].dir};
 
 
@@ -179,6 +188,7 @@ export default function move(gameState) {
     snakeWeight();
     foodWeight();
     enemyWeight();
+    console.log("Turn: " + gameState.turn);
     return chooseMove();
 }
 
