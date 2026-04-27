@@ -62,7 +62,7 @@ export default function move(gameState) {
             for (let cell of boardArray) {
                 if (cell.x == bit.x && cell.y == bit.y) {
                     if (health <= 50 || !isLongest) {
-                        cell.weight *= 2;
+                        cell.weight *= 5;
                     } else {
                         cell.weight *= 0.75;
                     }
@@ -122,7 +122,87 @@ export default function move(gameState) {
         return area;
     }
 
- 
+    function hazardWeight() {
+        let danger = gameState.board.hazards;
+        for (let bit of danger) {
+            for (let cell of boardArray) {
+                if (cell.x == bit.x && cell.y == bit.y) {
+                        cell.weight *= 0.5;
+                }
+            }
+        }
+
+    }
+
+    //AI Function for debugging
+ function printBoard() {
+    const RESET  = '\x1b[0m';
+    const BOLD   = '\x1b[1m';
+
+
+    const RED    = '\x1b[31m';
+    const YELLOW = '\x1b[33m';
+    const GREEN  = '\x1b[32m';
+    const WHITE  = '\x1b[37m';
+
+
+    const BG_BLACK  = '\x1b[40m';
+    const BG_RED    = '\x1b[41m';
+    const BG_GREEN  = '\x1b[42m';
+
+    function weightColour(weight) {
+        if (weight === -Infinity)       return `${BOLD}${RED}`;
+        if (weight >= 2)                return `${BOLD}${BG_GREEN}${WHITE}`;  
+        if (weight >= 1)             return `${GREEN}`;                    
+        if (weight >= 0.5)             return `${YELLOW}`;                   
+        return `${RED}`;                                                       
+    }
+
+    let snakeCells = {};
+    for (let snake of gameState.board.snakes) {
+        for (let i = 0; i < snake.body.length; i++) {
+            let part = snake.body[i];
+            let isMe   = snake.id === gameState.you.id;
+            let isHead = i === 0;
+            snakeCells[`${part.x},${part.y}`] = { isMe, isHead };
+        }
+    }
+    let foodCells = new Set(gameState.board.food.map(f => `${f.x},${f.y}`));
+
+    let rows = [];
+    for (let y = board.height - 1; y >= 0; y--) {
+        let row = [];
+        for (let x = 0; x < board.width; x++) {
+            let key  = `${x},${y}`;
+            let cell = boardArray.find(c => c.x === x && c.y === y);
+            let weight = cell ? cell.weight : 0;
+            let label;
+
+            if (snakeCells[key]) {
+                let { isMe, isHead } = snakeCells[key];
+                if (isHead && isMe)       label = `${BOLD}${BG_GREEN}${WHITE} @@ ${RESET}`;
+                else if (isHead && !isMe) label = `${BOLD}${BG_RED}${WHITE} @@ ${RESET}`;
+                else if (isMe)            label = `${BG_BLACK}${WHITE} SS ${RESET}`;
+                else                      label = `${BG_BLACK}${RED}  EE ${RESET}`;
+            } else if (foodCells.has(key)) {
+                label = `${BOLD}${YELLOW} ** ${RESET}`;
+            } else if (weight === -Infinity) {
+                label = `${BOLD}${RED} XX ${RESET}`;
+            } else {
+                let colour = weightColour(weight);
+                label = `${colour}${weight.toFixed(2).padStart(5)}${RESET}`;
+            }
+
+            row.push(label);
+        }
+        rows.push(row.join(`${WHITE}|${RESET}`));
+    }
+
+    let divider = `${WHITE}${'─'.repeat(7 * board.width)}${RESET}`;
+    console.log(divider);
+    console.log(rows.join(`\n${divider}\n`));
+    console.log(divider);
+}
 
     function chooseMove() {
         let myHead = gameState.you.body[0];
@@ -168,6 +248,7 @@ export default function move(gameState) {
             let spaceScore = (c.fill / maxFill) * 2;
             let trapScore = (c.trapReduction / maxTrapReduction) * 1.5;
             c.totalWeight = c.square.weight + spaceScore;
+            c.square.weight = c.totalWeight;
         }
 
         candidates.sort((a, b) => b.totalWeight - a.totalWeight);
@@ -188,7 +269,12 @@ export default function move(gameState) {
     snakeWeight();
     foodWeight();
     enemyWeight();
+    hazardWeight();
     console.log("Turn: " + gameState.turn);
-    return chooseMove();
+    let choice = chooseMove();
+    printBoard();
+    console.log(choice);
+    return choice;
+
 }
 
