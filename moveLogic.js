@@ -53,19 +53,33 @@ export default function move(gameState) {
         let foods = gameState.board.food;
         let health = gameState.you.health;
         let myLength = gameState.you.length;
+        let myHead = gameState.you.head;
 
         let isLongest = gameState.board.snakes.every(snake =>
             snake.id == gameState.you.id || myLength > snake.length
         );
 
+        let closestFood;
+        let closestDist = Infinity;
         for (let bit of foods) {
+            let dist = Math.abs(bit.x - myHead.x) + Math.abs(bit.y - myHead.y);
+            if (dist < closestDist) {
+                closestDist = dist;
+                closestFood = bit;
+            }
+        }
+    
+
+        for (let bit of foods) {
+            let dist = Math.abs(bit.x - myHead.x) + Math.abs(bit.y - myHead.y);
             for (let cell of boardArray) {
                 if (cell.x == bit.x && cell.y == bit.y) {
                     if (health <= 50 || !isLongest) {
-                        cell.weight *= 5;
-                    } else {
-                        cell.weight *= 0.75;
-                    }
+                        cell.weight *= (10 / (dist + 1));
+                        if (bit == closestFood) {
+                            cell.weight *= 2;
+                        }
+                    } 
                 }
             }
         }
@@ -82,7 +96,7 @@ export default function move(gameState) {
                 let dist = Math.abs(cell.x - enemyHead.x) + Math.abs(cell.y - enemyHead.y);
                 if (dist == 1) {
                     if (myLength >= enemyLength + 1) {
-                        cell.weight *= 1.5;
+                        cell.weight *= 2;
                     } else {
                         cell.weight *= 0.25;
                     }
@@ -124,10 +138,17 @@ export default function move(gameState) {
 
     function hazardWeight() {
         let danger = gameState.board.hazards;
+        let foods = gameState.board.food;
         for (let bit of danger) {
             for (let cell of boardArray) {
                 if (cell.x == bit.x && cell.y == bit.y) {
-                        cell.weight *= 0.5;
+                    for (let food of foods) {
+                        if (cell.x == food.x && cell.y == food.y) {
+                            cell.weight += 5;
+                        } else {
+                            cell.weight *= 0.6;
+                        }
+                    }
                 }
             }
         }
@@ -230,7 +251,7 @@ export default function move(gameState) {
 
         for (let c of candidates) {
             if (c.fill > 0 && c.fill < myLength) {
-                c.square.weight = -Infinity;
+                c.square.weight *= 0.5;
                 c.fill = 0;
             }
         }
@@ -247,7 +268,7 @@ export default function move(gameState) {
         for (let c of candidates) {
             let spaceScore = (c.fill / maxFill) * 2;
             let trapScore = (c.trapReduction / maxTrapReduction) * 1.5;
-            c.totalWeight = c.square.weight + spaceScore;
+            c.totalWeight = c.square.weight + spaceScore + trapScore;
             c.square.weight = c.totalWeight;
         }
 
