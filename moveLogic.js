@@ -49,41 +49,46 @@ export default function move(gameState) {
         }
     }
 
-    function foodWeight() {
-        let foods = gameState.board.food;
-        let health = gameState.you.health;
-        let myLength = gameState.you.length;
-        let myHead = gameState.you.head;
+function foodWeight() {
+    let foods = gameState.board.food;
+    let health = gameState.you.health;
+    let myLength = gameState.you.length;
+    let myHead = gameState.you.head;
 
-        let isLongest = gameState.board.snakes.every(snake =>
-            snake.id == gameState.you.id || myLength > snake.length
-        );
+    let isLongest = gameState.board.snakes.every(snake =>
+        snake.id == gameState.you.id || myLength > snake.length
+    );
 
-        let closestFood;
-        let closestDist = Infinity;
-        for (let bit of foods) {
-            let dist = Math.abs(bit.x - myHead.x) + Math.abs(bit.y - myHead.y);
-            if (dist < closestDist) {
-                closestDist = dist;
-                closestFood = bit;
-            }
+    let closestFood;
+    let closestDist = Infinity;
+
+    for (let bit of foods) {
+        let dist = Math.abs(myHead.x - bit.x) + Math.abs(myHead.y - bit.y);
+        if (dist < closestDist) {
+            closestDist = dist;
+            closestFood = bit;
         }
-    
+    }
 
+    let shouldSeekFood = health <= 50 || !isLongest;
+
+    for (let cell of boardArray) {
         for (let bit of foods) {
-            let dist = Math.abs(bit.x - myHead.x) + Math.abs(bit.y - myHead.y);
-            for (let cell of boardArray) {
-                if (cell.x == bit.x && cell.y == bit.y) {
-                    if (health <= 50 || !isLongest) {
-                        cell.weight *= (10 / (dist + 1));
-                        if (bit == closestFood) {
-                            cell.weight *= 2;
-                        }
-                    } 
+            if (cell.x == bit.x && cell.y == bit.y && shouldSeekFood) {
+                let dist = Math.abs(myHead.x - bit.x) + Math.abs(myHead.y - bit.y);
+                cell.weight *= (10 / (dist + 1));
+                if (bit.x == closestFood.x && bit.y == closestFood.y) {
+                    cell.weight *= 2;
                 }
             }
         }
+
+        if (closestFood && shouldSeekFood) {
+            let distToClosestFood = Math.abs(cell.x - closestFood.x) + Math.abs(cell.y - closestFood.y);
+            cell.weight *= (10 / (distToClosestFood + 1));
+        }
     }
+}
 
     function enemyWeight() {
         let allSnakes = gameState.board.snakes;
@@ -96,9 +101,9 @@ export default function move(gameState) {
                 let dist = Math.abs(cell.x - enemyHead.x) + Math.abs(cell.y - enemyHead.y);
                 if (dist == 1) {
                     if (myLength >= enemyLength + 1) {
-                        cell.weight *= 2;
+                        cell.weight *= 1.5;
                     } else {
-                        cell.weight *= 0.25;
+                        cell.weight *= 0.1;
                     }
                 }
             }
@@ -205,8 +210,6 @@ export default function move(gameState) {
                 else if (isHead && !isMe) label = `${BOLD}${BG_RED}${WHITE} @@ ${RESET}`;
                 else if (isMe)            label = `${BG_BLACK}${WHITE} SS ${RESET}`;
                 else                      label = `${BG_BLACK}${RED}  EE ${RESET}`;
-            } else if (foodCells.has(key)) {
-                label = `${BOLD}${YELLOW} ** ${RESET}`;
             } else if (weight === -Infinity) {
                 label = `${BOLD}${RED} XX ${RESET}`;
             } else {
