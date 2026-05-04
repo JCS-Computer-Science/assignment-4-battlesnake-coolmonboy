@@ -271,7 +271,7 @@ function foodWeight() {
         for (let c of candidates) {
             let spaceScore = (c.fill / maxFill) * 2;
             let trapScore = (c.trapReduction / maxTrapReduction) * 1.5;
-            c.totalWeight = c.square.weight + spaceScore + trapScore;
+            c.totalWeight = c.square.weight + spaceScore;
             c.square.weight = c.totalWeight;
         }
 
